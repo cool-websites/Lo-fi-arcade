@@ -111,16 +111,17 @@
   <div class="subtitle">CHILL BEATS // NEON NIGHTS</div>
 
   <div class="media-hub">
-    <h3 id="track-title">LOADING LO-FI CHILL SET...</h3>
+    <h3 id="track-title">WAITING FOR USER...</h3>
     
     <canvas id="visualizerCanvas" width="560" height="100"></canvas>
 
+    <!-- Corrected URL for the Lofi Chill set -->
     <iframe id="sc-player" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" 
-      src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/326162235&color=%2300ffcc&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false">
+      src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/291136437&color=%2300ffcc&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false">
     </iframe>
 
     <div class="controls">
-      <button id="play-btn">Play / Pause</button>
+      <button id="play-btn">START AUDIO</button>
       <button id="next-btn">Next Track</button>
     </div>
   </div>
@@ -217,7 +218,7 @@
         ctx.fillStyle = '#ffffff';
         ctx.font = '16px Courier New';
         ctx.fillText('FINAL SCORE: ' + score, canvas.width / 2, (canvas.height / 2) + 40);
-        ctx.fillText('CLICK TO REBOOT', canvas.width / 2, (canvas.height / 2) + 80);
+        ctx.fillText('CLICK CANVAS TO REBOOT', canvas.width / 2, (canvas.height / 2) + 80);
         return;
       }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -264,19 +265,30 @@
     const visCanvas = document.getElementById('visualizerCanvas');
     const visCtx = visCanvas.getContext('2d');
     const trackLabel = document.getElementById('track-title');
+    const playBtn = document.getElementById('play-btn');
+
+    let visualizerStarted = false;
 
     widget.bind(SC.Widget.Events.READY, () => {
-      trackLabel.innerText = "LO-FI CHILL READY";
+      trackLabel.innerText = "READY: CLICK START AUDIO";
     });
 
     widget.bind(SC.Widget.Events.PLAY, () => {
+      playBtn.innerText = "PAUSE AUDIO";
       widget.getCurrentSound((sound) => {
         trackLabel.innerText = "NOW PLAYING: " + sound.title.toUpperCase();
       });
-      startVisualizer();
+      if (!visualizerStarted) {
+        visualizerStarted = true;
+        startVisualizer();
+      }
     });
 
-    document.getElementById('play-btn').addEventListener('click', () => {
+    widget.bind(SC.Widget.Events.PAUSE, () => {
+      playBtn.innerText = "RESUME AUDIO";
+    });
+
+    playBtn.addEventListener('click', () => {
       widget.toggle();
     });
 
