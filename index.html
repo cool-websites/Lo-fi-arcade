@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lo-Fi Arcade</title>
-<script src="https://w.soundcloud.com/player/api.js"></script>
 <style>
   body {
     background-color: #0d0d12;
@@ -51,6 +50,7 @@
     font-size: 1rem;
     height: 1.2rem;
     overflow: hidden;
+    text-transform: uppercase;
   }
 
   #visualizerCanvas {
@@ -88,10 +88,6 @@
     box-shadow: 0 0 10px #00ffcc;
   }
 
-  #sc-player {
-    display: none; 
-  }
-
   #gameCanvas {
     background: #12121a;
     border: 2px solid #ff00ff;
@@ -108,6 +104,10 @@
     text-transform: uppercase;
     letter-spacing: 1px;
   }
+
+  #local-audio {
+    display: none;
+  }
 </style>
 </head>
 <body>
@@ -116,18 +116,15 @@
   <div class="subtitle">CHILL BEATS // NEON NIGHTS</div>
 
   <div class="media-hub">
-    <h3 id="track-title">SYSTEM IDLE: AWAITING INPUT</h3>
+    <h3 id="track-title">CONNECTING TO GITHUB...</h3>
     
     <canvas id="visualizerCanvas" width="560" height="100"></canvas>
 
-    <!-- Specific Lofi Chill Playlist Integration -->
-    <iframe id="sc-player" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" 
-      src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/291136437&color=%2300ffcc&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false">
-    </iframe>
+    <audio id="local-audio" crossorigin="anonymous"></audio>
 
     <div class="controls">
       <button id="play-btn">START AUDIO</button>
-      <button id="next-btn">NEXT TRACK</button>
+      <button id="next-btn">RANDOM TRACK</button>
     </div>
   </div>
 
@@ -136,6 +133,12 @@
   <div class="controls-hint">Use Left / Right Arrow Keys to Dodge</div>
 
   <script>
+    // --- GITHUB CONFIGURATION ---
+    // Change these to your actual GitHub info!
+    const GITHUB_USERNAME = 'cool-websites'; 
+    const REPO_NAME = 'Lo-fi-arcade';
+    const FOLDER_PATH = 'music'; 
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -267,79 +270,113 @@
 
     update();
 
-    // --- SOUNDCLOUD & VISUALIZER LOGIC ---
-    const iframe = document.getElementById('sc-player');
-    const widget = SC.Widget(iframe);
-    const visCanvas = document.getElementById('visualizerCanvas');
-    const visCtx = visCanvas.getContext('2d');
+    // --- AUTOMATIC GITHUB FILE FETCHING ---
+    const audio = document.getElementById('local-audio');
     const trackLabel = document.getElementById('track-title');
     const playBtn = document.getElementById('play-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const visCanvas = document.getElementById('visualizerCanvas');
+    const visCtx = visCanvas.getContext('2d');
 
-    let isPlaying = false;
-    let visAnimation;
+    let audioCtx;
+    let analyser;
+    let source;
+    let isInitialized = false;
+    let songFiles = [];
 
-    widget.bind(SC.Widget.Events.READY, () => {
-      trackLabel.innerText = "LO-FI CHILL: READY";
-    });
+    async function fetchMusicList() {
+      try {
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FOLDER_PATH}`);
+        const files = await response.json();
+        // Filter for mp3 files only
+        songFiles = files.filter(file => file.name.endsWith('.mp3')).map(file => file.name);
+        if (songFiles.length > 0) {
+          trackLabel.innerText = "MUSIC FOLDER LOADED";
+        } else {
+          trackLabel.innerText = "NO MP3s FOUND IN FOLDER";
+        }
+      } catch (error) {
+        console.error("Error fetching music list:", error);
+        trackLabel.innerText = "GITHUB CONNECTION ERROR";
+      }
+    }
 
-    widget.bind(SC.Widget.Events.PLAY, () => {
-      isPlaying = true;
-      playBtn.innerText = "PAUSE AUDIO";
-      widget.getCurrentSound((sound) => {
-        trackLabel.innerText = "NOW PLAYING: " + sound.title.toUpperCase();
-      });
-      if (!visAnimation) startVisualizer();
-    });
+    function playRandomSong() {
+      if (songFiles.length === 0) return;
+      const randomIndex = Math.floor(Math.random() * songFiles.length);
+      const selectedSong = songFiles[randomIndex];
+      // Use the raw GitHub link for the audio source
+      audio.src = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${FOLDER_PATH}/${selectedSong}`;
+      trackLabel.innerText = "NOW PLAYING: " + selectedSong.replace('.mp3', '').toUpperCase();
+      audio.play();
+    }
 
-    widget.bind(SC.Widget.Events.PAUSE, () => {
-      isPlaying = false;
-      playBtn.innerText = "RESUME AUDIO";
-    });
-
-    widget.bind(SC.Widget.Events.FINISH, () => {
-      widget.next();
-    });
+    function initAudio() {
+      if (!isInitialized) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        source = audioCtx.createMediaElementSource(audio);
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        analyser.fftSize = 256;
+        isInitialized = true;
+        startVisualizer();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
 
     playBtn.addEventListener('click', () => {
-      widget.toggle();
+      initAudio();
+      if (audio.paused) {
+        if (!audio.src) {
+          playRandomSong();
+        } else {
+          audio.play();
+        }
+        playBtn.innerText = "PAUSE AUDIO";
+      } else {
+        audio.pause();
+        playBtn.innerText = "RESUME AUDIO";
+      }
     });
 
-    document.getElementById('next-btn').addEventListener('click', () => {
-      widget.next();
+    nextBtn.addEventListener('click', () => {
+      initAudio();
+      playRandomSong();
+      playBtn.innerText = "PAUSE AUDIO";
     });
+
+    audio.addEventListener('ended', playRandomSong);
 
     function startVisualizer() {
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
       function render() {
-        visAnimation = requestAnimationFrame(render);
-        
-        // Trail effect
+        requestAnimationFrame(render);
+        analyser.getByteFrequencyData(dataArray);
+
         visCtx.fillStyle = 'rgba(18, 18, 26, 0.2)';
         visCtx.fillRect(0, 0, visCanvas.width, visCanvas.height);
-        
-        const barCount = 40;
-        const barWidth = (visCanvas.width / barCount) - 2;
 
-        for (let i = 0; i < barCount; i++) {
-          let barHeight;
-          if (isPlaying) {
-            // Rhythmic bounce simulation for Lo-Fi frequencies
-            barHeight = 15 + Math.random() * 40 + (Math.sin(Date.now() / 150 + i) * 25);
-          } else {
-            // Static/low-power mode when paused
-            barHeight = 5 + (Math.sin(Date.now() / 500 + i) * 5);
-          }
+        const barWidth = (visCanvas.width / bufferLength) * 2.5;
+        let x = 0;
 
-          // Create neon cyan to purple gradient effect
-          const hue = 180 + (i * 2); 
+        for (let i = 0; i < bufferLength; i++) {
+          const barHeight = (dataArray[i] / 255) * visCanvas.height;
+          const hue = 180 + (i * 2);
           visCtx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-          visCtx.shadowBlur = isPlaying ? 12 : 0;
+          visCtx.shadowBlur = 10;
           visCtx.shadowColor = `hsl(${hue}, 100%, 50%)`;
-          
-          visCtx.fillRect(i * (barWidth + 2), visCanvas.height - barHeight, barWidth, barHeight);
+          visCtx.fillRect(x, visCanvas.height - barHeight, barWidth, barHeight);
+          x += barWidth + 1;
         }
       }
       render();
     }
+
+    // Initial fetch
+    fetchMusicList();
   </script>
 </body>
 </html>
