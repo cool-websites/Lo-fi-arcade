@@ -85,7 +85,7 @@
   }
 
   #sc-player {
-    display: none; /* Keep the widget hidden to maintain the custom UI */
+    display: none; 
   }
 
   #gameCanvas {
@@ -111,17 +111,17 @@
   <div class="subtitle">CHILL BEATS // NEON NIGHTS</div>
 
   <div class="media-hub">
-    <h3 id="track-title">INITIALIZING SOUNDCLOUD...</h3>
+    <h3 id="track-title">LOADING LO-FI CHILL SET...</h3>
     
     <canvas id="visualizerCanvas" width="560" height="100"></canvas>
 
     <iframe id="sc-player" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" 
-      src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/1258671520&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false">
+      src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/326162235&color=%2300ffcc&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false">
     </iframe>
 
     <div class="controls">
       <button id="play-btn">Play / Pause</button>
-      <button id="next-btn">Next Lo-Fi Track</button>
+      <button id="next-btn">Next Track</button>
     </div>
   </div>
 
@@ -213,6 +213,11 @@
         ctx.font = 'bold 40px Courier New';
         ctx.textAlign = 'center';
         ctx.fillText('SYSTEM FAILURE', canvas.width / 2, canvas.height / 2);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px Courier New';
+        ctx.fillText('FINAL SCORE: ' + score, canvas.width / 2, (canvas.height / 2) + 40);
+        ctx.fillText('CLICK TO REBOOT', canvas.width / 2, (canvas.height / 2) + 80);
         return;
       }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -229,6 +234,19 @@
       if (frameCount % spawnRate === 0) createObstacle();
       requestAnimationFrame(update);
     }
+
+    function resetGame() {
+      if (isGameOver) {
+        score = 0;
+        obstacles = [];
+        frameCount = 0;
+        isGameOver = false;
+        player.x = 275;
+        update();
+      }
+    }
+
+    canvas.addEventListener('click', resetGame);
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowRight') player.dx = player.speed;
@@ -248,7 +266,7 @@
     const trackLabel = document.getElementById('track-title');
 
     widget.bind(SC.Widget.Events.READY, () => {
-      trackLabel.innerText = "READY TO STREAM";
+      trackLabel.innerText = "LO-FI CHILL READY";
     });
 
     widget.bind(SC.Widget.Events.PLAY, () => {
@@ -266,16 +284,20 @@
       widget.next();
     });
 
-    // Simulated Visualizer (SoundCloud API does not provide raw frequency data to AudioContext due to CORS)
-    // We simulate the frequency bars to move rhythmically with the player's interaction
     function startVisualizer() {
       function render() {
+        if (isGameOver) {
+           visCtx.fillStyle = '#12121a';
+           visCtx.fillRect(0, 0, visCanvas.width, visCanvas.height);
+           requestAnimationFrame(render);
+           return;
+        }
+        
         visCtx.fillStyle = 'rgba(18, 18, 26, 0.2)';
         visCtx.fillRect(0, 0, visCanvas.width, visCanvas.height);
         
         const barWidth = (visCanvas.width / 64);
         for (let i = 0; i < 64; i++) {
-          // Simulation of Lo-Fi frequencies (slower, atmospheric movement)
           const barHeight = Math.random() * 50 + (Math.sin(Date.now() / 200 + i) * 20);
           visCtx.fillStyle = `rgb(0, 255, ${204 - i})`;
           visCtx.fillRect(i * (barWidth + 2), visCanvas.height - barHeight, barWidth, barHeight);
