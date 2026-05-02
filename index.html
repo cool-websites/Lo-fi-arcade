@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lo-Fi Arcade</title>
+<script src="https://w.soundcloud.com/player/api.js"></script>
 <style>
   body {
     background-color: #0d0d12;
@@ -49,7 +50,6 @@
     text-shadow: 0 0 5px #ff00ff;
   }
 
-  /* Added Visualizer Canvas Style */
   #visualizerCanvas {
     width: 100%;
     height: 100px;
@@ -60,19 +60,32 @@
     display: block;
   }
 
-  audio {
-    width: 100%;
-    outline: none;
-    border-radius: 5px;
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
   }
 
-  /* Customizing the default audio player slightly across browsers */
-  audio::-webkit-media-controls-panel {
-    background-color: #2a2a35;
-  }
-  audio::-webkit-media-controls-current-time-display,
-  audio::-webkit-media-controls-time-remaining-display {
+  button {
+    background: #2a2a35;
     color: #00ffcc;
+    border: 1px solid #00ffcc;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+    text-transform: uppercase;
+    transition: 0.3s;
+  }
+
+  button:hover {
+    background: #00ffcc;
+    color: #0d0d12;
+    box-shadow: 0 0 10px #00ffcc;
+  }
+
+  #sc-player {
+    display: none; /* Keep the widget hidden to maintain the custom UI */
   }
 
   #gameCanvas {
@@ -98,16 +111,18 @@
   <div class="subtitle">CHILL BEATS // NEON NIGHTS</div>
 
   <div class="media-hub">
-    <h3>NOW PLAYING: Lo-Fi tracks 4 u // MAMMA-NOIS</h3>
+    <h3 id="track-title">INITIALIZING SOUNDCLOUD...</h3>
     
-    <!-- Audio Visualizer Canvas Added Here -->
     <canvas id="visualizerCanvas" width="560" height="100"></canvas>
 
-    <!-- Placeholder audio stream. Note the added id and crossorigin attribute -->
-    <audio id="bgm" crossorigin="anonymous" controls loop preload="auto">
-      <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
-      Your browser does not support the audio element.
-    </audio>
+    <iframe id="sc-player" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" 
+      src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/1258671520&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false">
+    </iframe>
+
+    <div class="controls">
+      <button id="play-btn">Play / Pause</button>
+      <button id="next-btn">Next Lo-Fi Track</button>
+    </div>
   </div>
 
   <canvas id="gameCanvas" width="600" height="400"></canvas>
@@ -130,19 +145,15 @@
     };
 
     let obstacles = [];
-    let particles = [];
     let score = 0;
     let frameCount = 0;
     let isGameOver = false;
 
-    // Draw Functions
     function drawPlayer() {
       ctx.fillStyle = player.color;
       ctx.shadowBlur = 15;
       ctx.shadowColor = player.color;
       ctx.fillRect(player.x, player.y, player.width, player.height);
-      
-      // Inner core for styling
       ctx.fillStyle = '#ffffff';
       ctx.shadowBlur = 0;
       ctx.fillRect(player.x + 10, player.y + 10, 20, 20);
@@ -153,16 +164,8 @@
       const maxWidth = 100;
       const width = Math.random() * (maxWidth - minWidth) + minWidth;
       const x = Math.random() * (canvas.width - width);
-      const speed = 4 + (score * 0.15); // Speed increases as score goes up
-      
-      obstacles.push({
-        x: x,
-        y: -50,
-        width: width,
-        height: 20,
-        color: '#ff00ff',
-        speed: speed
-      });
+      const speed = 4 + (score * 0.15);
+      obstacles.push({ x: x, y: -50, width: width, height: 20, color: '#ff00ff', speed: speed });
     }
 
     function drawObstacles() {
@@ -175,12 +178,9 @@
       });
     }
 
-    // Mechanics
     function moveObstacles() {
       for (let i = 0; i < obstacles.length; i++) {
         obstacles[i].y += obstacles[i].speed;
-        
-        // Remove obstacle if it goes off screen and add score
         if (obstacles[i].y > canvas.height) {
           obstacles.splice(i, 1);
           score += 10;
@@ -192,12 +192,7 @@
     function detectCollision() {
       for (let i = 0; i < obstacles.length; i++) {
         let obs = obstacles[i];
-        
-        // AABB Collision Detection
-        if (player.x < obs.x + obs.width &&
-            player.x + player.width > obs.x &&
-            player.y < obs.y + obs.height &&
-            player.y + player.height > obs.y) {
+        if (player.x < obs.x + obs.width && player.x + player.width > obs.x && player.y < obs.y + obs.height && player.y + player.height > obs.y) {
           isGameOver = true;
         }
       }
@@ -210,153 +205,85 @@
       ctx.fillText('SCORE: ' + score, 15, 30);
     }
 
-    // Main Game Loop
     function update() {
       if (isGameOver) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
         ctx.fillStyle = '#ff0033';
         ctx.font = 'bold 40px Courier New';
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#ff0033';
         ctx.textAlign = 'center';
         ctx.fillText('SYSTEM FAILURE', canvas.width / 2, canvas.height / 2);
-        
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '20px Courier New';
-        ctx.shadowBlur = 0;
-        ctx.fillText('FINAL SCORE: ' + score, canvas.width / 2, (canvas.height / 2) + 40);
-        ctx.fillText('Press F5 to Reboot', canvas.width / 2, (canvas.height / 2) + 80);
         return;
       }
-
-      // Clear Canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Apply movement
       player.x += player.dx;
-
-      // Wall boundaries
-      if (player.x < 0) {
-        player.x = 0;
-      } else if (player.x + player.width > canvas.width) {
-        player.x = canvas.width - player.width;
-      }
-
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
       drawPlayer();
       drawObstacles();
       drawScore();
-      
       moveObstacles();
       detectCollision();
-
       frameCount++;
-      
-      // Spawn rate gets slightly faster as score increases
       let spawnRate = Math.max(20, 50 - Math.floor(score / 50));
-      if (frameCount % spawnRate === 0) {
-        createObstacle();
-      }
-
+      if (frameCount % spawnRate === 0) createObstacle();
       requestAnimationFrame(update);
     }
 
-    // Input Handling
-    function moveRight() {
-      player.dx = player.speed;
-    }
-
-    function moveLeft() {
-      player.dx = -player.speed;
-    }
-
-    function stop() {
-      player.dx = 0;
-    }
-
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight') {
-        moveRight();
-      } else if (e.key === 'ArrowLeft') {
-        moveLeft();
-      }
+      if (e.key === 'ArrowRight') player.dx = player.speed;
+      if (e.key === 'ArrowLeft') player.dx = -player.speed;
     });
-
     document.addEventListener('keyup', (e) => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        stop();
-      }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') player.dx = 0;
     });
 
-    // Start game
     update();
 
+    // --- SOUNDCLOUD & VISUALIZER LOGIC ---
+    const iframe = document.getElementById('sc-player');
+    const widget = SC.Widget(iframe);
+    const visCanvas = document.getElementById('visualizerCanvas');
+    const visCtx = visCanvas.getContext('2d');
+    const trackLabel = document.getElementById('track-title');
 
-    // --- NEW: COMPLEX AUDIO VISUALIZER LOGIC ---
-    const visualizerCanvas = document.getElementById('visualizerCanvas');
-    const visCtx = visualizerCanvas.getContext('2d');
-    const audioElement = document.getElementById('bgm');
-    let audioContext;
-    let audioSource;
-    let analyser;
-
-    // Draw idle state before user hits play
-    visCtx.fillStyle = '#12121a';
-    visCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-    visCtx.fillStyle = '#a3a3c2';
-    visCtx.font = '14px Courier New';
-    visCtx.textAlign = 'center';
-    visCtx.fillText('PRESS PLAY TO INITIATE VISUALIZER', visualizerCanvas.width / 2, visualizerCanvas.height / 2);
-
-    // Browsers require a user interaction (like clicking play) to start the AudioContext
-    audioElement.addEventListener('play', () => {
-      if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        audioSource = audioContext.createMediaElementSource(audioElement);
-        analyser = audioContext.createAnalyser();
-        
-        audioSource.connect(analyser);
-        analyser.connect(audioContext.destination);
-        
-        analyser.fftSize = 256;
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-
-        function renderFrame() {
-          requestAnimationFrame(renderFrame);
-          analyser.getByteFrequencyData(dataArray);
-
-          // Use rgba to create a slight motion blur/trail effect
-          visCtx.fillStyle = 'rgba(18, 18, 26, 0.8)';
-          visCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-
-          const barWidth = (visualizerCanvas.width / bufferLength) * 2.5;
-          let x = 0;
-
-          for (let i = 0; i < bufferLength; i++) {
-            const barHeight = dataArray[i] / 2;
-
-            // Cyberpunk/Neon color gradient matching the theme
-            const r = barHeight + (25 * (i / bufferLength));
-            const g = 255 * (1 - (i / bufferLength));
-            const b = 255;
-
-            visCtx.fillStyle = `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${b})`;
-            visCtx.shadowBlur = 10;
-            visCtx.shadowColor = visCtx.fillStyle;
-            
-            // Draw bars growing from the bottom up
-            visCtx.fillRect(x, visualizerCanvas.height - barHeight, barWidth, barHeight);
-
-            x += barWidth + 2; // +2 for a small gap between bars
-          }
-        }
-        renderFrame();
-      } else if (audioContext.state === 'suspended') {
-        audioContext.resume();
-      }
+    widget.bind(SC.Widget.Events.READY, () => {
+      trackLabel.innerText = "READY TO STREAM";
     });
+
+    widget.bind(SC.Widget.Events.PLAY, () => {
+      widget.getCurrentSound((sound) => {
+        trackLabel.innerText = "NOW PLAYING: " + sound.title.toUpperCase();
+      });
+      startVisualizer();
+    });
+
+    document.getElementById('play-btn').addEventListener('click', () => {
+      widget.toggle();
+    });
+
+    document.getElementById('next-btn').addEventListener('click', () => {
+      widget.next();
+    });
+
+    // Simulated Visualizer (SoundCloud API does not provide raw frequency data to AudioContext due to CORS)
+    // We simulate the frequency bars to move rhythmically with the player's interaction
+    function startVisualizer() {
+      function render() {
+        visCtx.fillStyle = 'rgba(18, 18, 26, 0.2)';
+        visCtx.fillRect(0, 0, visCanvas.width, visCanvas.height);
+        
+        const barWidth = (visCanvas.width / 64);
+        for (let i = 0; i < 64; i++) {
+          // Simulation of Lo-Fi frequencies (slower, atmospheric movement)
+          const barHeight = Math.random() * 50 + (Math.sin(Date.now() / 200 + i) * 20);
+          visCtx.fillStyle = `rgb(0, 255, ${204 - i})`;
+          visCtx.fillRect(i * (barWidth + 2), visCanvas.height - barHeight, barWidth, barHeight);
+        }
+        requestAnimationFrame(render);
+      }
+      render();
+    }
   </script>
 </body>
 </html>
